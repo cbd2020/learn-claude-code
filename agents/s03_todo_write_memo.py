@@ -165,9 +165,6 @@ TOOLS = [
 # -- Agent loop with nag reminder injection --
 def agent_loop(messages: list):
     rounds_since_todo = 0
-    round_number = 1
-    conversation_file = "conversation_history.json"
-    conversation_history = []
     while True:
         # Print the input to the model
         print("\033[34m=== Model Input ===\033[0m")
@@ -189,12 +186,11 @@ def agent_loop(messages: list):
             "tools": TOOLS,
             "max_tokens": 8000
         }
-        # Record conversation round
-        round_data = {
-            "round_number": round_number,
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "client_request": model_input
-        }
+        # Save model input to JSON file
+        input_file = "model_input.json"
+        with open(input_file, 'w', encoding='utf-8') as f:
+            json.dump(model_input, f, indent=2, ensure_ascii=False)
+        print(f"Model input saved to {input_file}")
 
         max_retries = 3
         retry_delay = 1
@@ -226,14 +222,11 @@ def agent_loop(messages: list):
             "stop_sequence": response.stop_sequence,
             "usage": response.usage.to_dict()
         }
-        # Add model output to round data
-        round_data["server_response"] = model_output
-        conversation_history.append(round_data)
-        
-        # Save complete conversation history
-        with open(conversation_file, 'w', encoding='utf-8') as f:
-            json.dump(conversation_history, f, indent=2, ensure_ascii=False)
-        print(f"Round {round_number} saved to {conversation_file}")
+        # Save model output to JSON file
+        output_file = "model_output.json"
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(model_output, f, indent=2, ensure_ascii=False)
+        print(f"Model output saved to {output_file}")
 
         # Wait for user input before continuing
         try:
@@ -243,7 +236,6 @@ def agent_loop(messages: list):
         messages.append({"role": "assistant", "content": response.content})
         if response.stop_reason != "tool_use":
             return
-        round_number += 1
         results = []
         used_todo = False
         for block in response.content:
